@@ -1,0 +1,51 @@
+{
+  "name": "antigravity-proxy-manager",
+  "version": "1.0.0",
+  "description": "管理 Antigravity 本地反代服务的启动、停止和监控",
+  "author": "Claude",
+  "triggers": [
+    "启动反代",
+    "停止反代",
+    "反代状态",
+    "查看反代日志",
+    "antigravity proxy"
+  ],
+  "commands": {
+    "start": {
+      "description": "启动反代服务",
+      "shell": "PORT=8317 nohup npx antigravity-claude-proxy@latest start --strategy=sticky > ~/.antigravity-proxy.log 2>&1 &",
+      "check": "sleep 5 && curl -s http://localhost:8317/health | grep -q 'status.*ok' && echo '✅ 反代启动成功' || echo '❌ 启动失败，检查日志'"
+    },
+    "stop": {
+      "description": "停止反代服务",
+      "shell": "pkill -f antigravity-claude-proxy && echo '✅ 反代已停止'"
+    },
+    "status": {
+      "description": "检查反代状态",
+      "shell": "curl -s http://localhost:8317/health 2>/dev/null | grep -q 'status.*ok' && echo '✅ 反代运行中' || echo '❌ 反代未运行'"
+    },
+    "logs": {
+      "description": "查看最近日志",
+      "shell": "cat ~/.antigravity-proxy.log | tail -30"
+    },
+    "models": {
+      "description": "查看反代中可用的模型",
+      "shell": "curl -s http://localhost:8317/health 2>/dev/null | grep -o '"models":{[^}]*}' | tr ',' '\n' | grep -o '[a-z-]*-[0-9]' | sort -u"
+    }
+  },
+  "config": {
+    "port": 8317,
+    "strategy": "sticky",
+    "log_path": "~/.antigravity-proxy.log"
+  },
+  "examples": [
+    {
+      "trigger": "启动反代",
+      "action": "运行 start 命令，检查是否成功"
+    },
+    {
+      "trigger": "反代状态",
+      "action": "运行 status 命令查看运行状态"
+    }
+  ]
+}

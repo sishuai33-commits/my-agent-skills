@@ -1,0 +1,97 @@
+{
+  "name": "antigravity-model-sync",
+  "version": "1.0.0",
+  "description": "将 Antigravity 反代中的模型同步配置到 OpenCode 和 Claude Code",
+  "author": "Claude",
+  "triggers": [
+    "同步 antigravity 模型",
+    "添加 antigravity 模型到 opencode",
+    "添加 antigravity 模型到 claude code",
+    "更新 antigravity 配置",
+    "antigravity 新模型"
+  ],
+  "workflow": {
+    "check_proxy_models": {
+      "step": 1,
+      "description": "检查反代中可用的模型",
+      "command": "curl -s http://localhost:8317/health | grep -o 'claude-opus-4-[0-9]-thinking\|gemini-[0-9]-[a-z-]*' | sort -u"
+    },
+    "update_opencode": {
+      "step": 2,
+      "description": "更新 OpenCode 配置",
+      "file": "~/.config/opencode/opencode.json",
+      "action": "在 provider.google.models 中添加新模型",
+      "template": {
+        "model_id": "claude-opus-4-6-thinking",
+        "name": "Claude Opus 4.6 Thinking",
+        "limit": {"context": 200000, "output": 8192}
+      }
+    },
+    "update_claude_script": {
+      "step": 3,
+      "description": "更新 Claude Code 切换脚本",
+      "file": "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/scripts/cc-antigravity.sh",
+      "action": "在 case 语句中添加新模型选项",
+      "template": "    opus46|o46|4.6)\n        MODEL_NAME=\"claude-opus-4-6-thinking\"\n        MODEL_DESC=\"Claude Opus 4.6 Thinking (最新最强)\"\n        ;;"
+    },
+    "update_zshrc": {
+      "step": 4,
+      "description": "更新 .zshrc 中的 ccmodels 显示",
+      "file": "~/.zshrc",
+      "action": "在 ccmodels 函数中添加新模型说明"
+    },
+    "update_docs": {
+      "step": 5,
+      "description": "更新相关文档",
+      "files": [
+        "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/README.md",
+        "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/docs/CLAUDE_MODELS_GUIDE.md",
+        "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/docs/CLAUDE_CODE_QUICK_START.md"
+      ]
+    },
+    "validate": {
+      "step": 6,
+      "description": "验证配置",
+      "command": "python3 -m json.tool ~/.config/opencode/opencode.json > /dev/null && echo '✅ OpenCode 配置格式正确'"
+    },
+    "restart": {
+      "step": 7,
+      "description": "重启 OpenCode",
+      "command": "pkill -9 'OpenCode' && sleep 2 && open -a 'OpenCode'"
+    }
+  },
+  "current_models": {
+    "claude": [
+      {"id": "claude-sonnet-4-5", "short": "sonnet", "name": "Claude Sonnet 4.5"},
+      {"id": "claude-opus-4-5-thinking", "short": "opus45", "name": "Claude Opus 4.5"},
+      {"id": "claude-opus-4-6-thinking", "short": "opus46", "name": "Claude Opus 4.6"}
+    ],
+    "gemini": [
+      {"id": "gemini-3-pro-high", "short": "3-pro", "name": "Gemini 3 Pro High"},
+      {"id": "gemini-2.5-flash", "short": "2.5-flash", "name": "Gemini 2.5 Flash"}
+    ]
+  },
+  "config_files": {
+    "opencode": "~/.config/opencode/opencode.json",
+    "claude_script": "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/scripts/cc-antigravity.sh",
+    "zshrc": "~/.zshrc",
+    "readme": "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/README.md",
+    "models_guide": "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/docs/CLAUDE_MODELS_GUIDE.md",
+    "quick_start": "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/docs/CLAUDE_CODE_QUICK_START.md",
+    "setup_guide": "~/Documents/My_Code_Projects/AI-Tools（模型切换）/Claude-Code/docs/CLADE_CODE_SETUP.md"
+  },
+  "examples": [
+    {
+      "scenario": "发现反代中有新模型 claude-opus-4-7-thinking",
+      "steps": [
+        "1. 检查反代确认模型存在",
+        "2. 编辑 opencode.json 添加模型定义",
+        "3. 编辑 cc-antigravity.sh 添加 case 选项",
+        "4. 编辑 .zshrc 更新 ccmodels",
+        "5. 更新所有文档",
+        "6. 验证 JSON 格式",
+        "7. 重启 OpenCode"
+      ]
+    }
+  ]
+}
