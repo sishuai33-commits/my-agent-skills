@@ -63,8 +63,7 @@
   "current_models": {
     "claude": [
       {"id": "claude-sonnet-4-5", "short": "sonnet", "name": "Claude Sonnet 4.5"},
-      {"id": "claude-opus-4-5-thinking", "short": "opus45", "name": "Claude Opus 4.5"},
-      {"id": "claude-opus-4-6-thinking", "short": "opus46", "name": "Claude Opus 4.6"}
+      {"id": "claude-opus-4-6-thinking", "short": "opus", "name": "Claude Opus 4.6"}
     ],
     "gemini": [
       {"id": "gemini-3-pro-high", "short": "3-pro", "name": "Gemini 3 Pro High"},

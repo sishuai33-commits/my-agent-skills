@@ -61,8 +61,7 @@ pkill -9 "OpenCode" && open -a "OpenCode"
 | 命令 | 模型 ID | 说明 |
 |------|---------|------|
 | `ccag sonnet` | claude-sonnet-4-5 | 平衡型 |
-| `ccag opus45` | claude-opus-4-5-thinking | 最强推理 4.5 |
-| `ccag opus46` | claude-opus-4-6-thinking | 最新最强 4.6 |
+| `ccag opus` | claude-opus-4-6-thinking | 最强推理 |
 
 ### Gemini 模型
 | 命令 | 模型 ID | 说明 |
