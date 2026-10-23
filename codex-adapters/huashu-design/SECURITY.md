@@ -1,1 +1,1 @@
-/Users/sishuai/Documents/My_Skills_Library/社区第三方/huashu-design/SECURITY.md
+../../../社区第三方/huashu-design/SECURITY.md

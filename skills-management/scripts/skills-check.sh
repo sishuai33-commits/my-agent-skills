@@ -85,21 +85,64 @@ done < "$TMP/repos.list"
 awk -F'\t' '$1=="-"{print $2"\t"$3}' "$TMP/map.tsv" > "$TMP/nongit.tsv"
 if [ -s "$TMP/nongit.tsv" ]; then
   echo
-  echo "═══ B. 非 git，但有来源档案（需人工比对）═══"
+  echo "═══ B. 非 git，按档案比对上游 ═══"
   : > "$TMP/blind.tsv"
   while IFS=$'\t' read -r name real; do
     doc=""
     [ -f "$real/UPSTREAM.md" ] && doc="$real/UPSTREAM.md"
     [ -z "$doc" ] && [ -f "$(dirname "$real")/UPSTREAM.md" ] && doc="$(dirname "$real")/UPSTREAM.md"
-    if [ -n "$doc" ]; then
-      if grep -qE '自建|本地真源|无上游' "$doc"; then
-        printf "  %-32s %s\n" "$name" "🏠 自建/本地真源"
+    if [ -z "$doc" ]; then
+      printf "%s\t%s\n" "$name" "$real" >> "$TMP/blind.tsv"
+      continue
+    fi
+    if ! grep -q 'skills-check:' "$doc" && grep -qE '自建|本地真源|无上游' "$doc"; then
+      printf "  %-32s %s\n" "$name" "🏠 自建/本地真源"
+      continue
+    fi
+    rec=$(grep -o '<!-- skills-check:[^>]*-->' "$doc" 2>/dev/null | grep "skill=$name" | head -1)
+    [ -z "$rec" ] && rec=$(grep -o '<!-- skills-check:[^>]*-->' "$doc" 2>/dev/null | grep -v 'skill=' | head -1)
+    if [ -z "$rec" ]; then
+      src=$(grep -m1 -oE 'https?://[^ )）,，]+' "$doc" | head -1)
+      printf "  %-32s %s\n" "$name" "⚠️ 仅档案未登记检查（${src:-无地址}）"
+      continue
+    fi
+    url=$(printf '%s' "$rec" | sed -n 's/.*upstream=\([^ ]*\).*/\1/p')
+    rec_ver=$(printf '%s' "$rec" | sed -n 's/.*version=\([^ ]*\).*/\1/p')
+    rec_sum=$(printf '%s' "$rec" | sed -n 's/.*sha256=\([^ ]*\).*/\1/p')
+    if [ "$FETCH" -eq 0 ]; then
+      printf "  %-32s %s\n" "$name" "（离线跳过）"
+      continue
+    fi
+    # 注意：必须落盘再算哈希。$(...) 命令替换会剥掉尾部换行，直接对变量算 sha256 永远对不上。
+    tf="$TMP/up-$name.md"
+    ok=0
+    for attempt in 1 2 3; do
+      if curl -fsSL --max-time 30 --retry 2 --retry-delay 1 "$url" -o "$tf" 2>/dev/null && [ -s "$tf" ]; then
+        ok=1; break
+      fi
+      sleep 1
+    done
+    if [ "$ok" -eq 0 ]; then
+      printf "  %-32s %s\n" "$name" "⚠️ 上游取不到（网络问题，非落后）"
+      continue
+    fi
+    body=$(cat "$tf")
+    up_ver=$(printf '%s' "$body" | grep -m1 -E '^[[:space:]]*version:' | sed 's/.*version:[[:space:]]*//;s/"//g;s/[[:space:]]*$//')
+    if [ -n "${rec_ver}" ] && [ -n "${up_ver}" ]; then
+      if [ "${rec_ver}" = "${up_ver}" ]; then
+        printf "  %-32s %s\n" "$name" "✅ 同版本 $up_ver"
       else
-        src=$(grep -m1 -oE 'https?://[^ )）,，]+' "$doc" | head -1)
-        printf "  %-32s %s\n" "$name" "${src:-（档案未写上游地址）}"
+        printf "  %-32s %s\n" "$name" "❌ 上游已到 ${up_ver}（档案记 ${rec_ver}）"
+        backlog=1
       fi
     else
-      printf "%s\t%s\n" "$name" "$real" >> "$TMP/blind.tsv"
+      cur=$(shasum -a 256 "$tf" | awk '{print $1}')
+      if [ "$cur" = "$rec_sum" ]; then
+        printf "  %-32s %s\n" "$name" "✅ 上游内容未变"
+      else
+        printf "  %-32s %s\n" "$name" "⚠️ 上游内容已变，需人工比对后更新档案"
+        backlog=1
+      fi
     fi
   done < "$TMP/nongit.tsv"
   if [ -s "$TMP/blind.tsv" ]; then
@@ -114,7 +157,7 @@ fi
 
 echo
 if [ "$backlog" -eq 1 ]; then
-  echo "结论：存在落后上游的 git 仓，见 A 组 ❌ 行。"
+  echo "结论：存在落后或上游有变化的项，见 ❌/⚠️ 行。"
   exit 2
 fi
 echo "结论：没有发现落后上游的 git 仓。"

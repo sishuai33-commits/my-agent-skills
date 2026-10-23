@@ -1,1 +1,1 @@
-/Users/sishuai/Documents/My_Skills_Library/anthropic_官方/skills/frontend-design/LICENSE.txt
+../../../anthropic_官方/skills/frontend-design/LICENSE.txt
