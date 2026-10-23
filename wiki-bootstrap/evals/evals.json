@@ -1,0 +1,26 @@
+{
+  "skill_name": "wiki-bootstrap",
+  "evals": [
+    {
+      "id": 1,
+      "name": "obsidian-first-deploy",
+      "prompt": "我想把项目知识体系搭建起来，目前用 Obsidian 记笔记，主要做两个项目：一个在 ~/Code/mobile-app/ 做 Flutter 开发，另一个在 ~/Documents/consulting/ 做咨询交付。帮我部署 wiki。",
+      "expected_output": "1) 自动检测到 Obsidian 环境；2) 询问确认笔记工具和项目目录；3) 展示个性化落地方案（wiki/ 在 Obsidian vault 内）；4) 生成 WIKI_SCHEMA.md、DATA_SOURCES.md、index.md；5) 安装 wiki-management skill；6) 输出知识库地图和下一步。整个过程全中文交互，选择题带默认值。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "plain-folder-minimal",
+      "prompt": "我没有笔记工具，就是想用 wiki 管一下我 ~/work/stuff/ 这个目录的内容。东西不多，不需要定时编译，也别配 MCP 那些复杂的。",
+      "expected_output": "1) 检测到无笔记工具，回退到纯文件夹模式；2) 根据用户简洁诉求，快速走最简配置（手动编译、无 MCP）；3) wiki 部署在 ~/work/stuff/wiki/；4) 所有链接用标准 Markdown 语法；5) 完成后提示手动运行 '编译 wiki'。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "existing-wiki-conflict",
+      "prompt": "我看到说有 wiki-bootstrap 这个东西，想试一下。但我之前好像已经搞过一个 .claude/WIKI_SCHEMA.md 了，不要覆盖，看看能不能兼容。",
+      "expected_output": "1) 探查阶段检测到已存在 WIKI_SCHEMA.md 和可能的 wiki/ 目录；2) 在 Phase 2 询问时报告冲突；3) 按用户意愿：保留现有配置、合并关键差异、或仅安装 wiki-management skill；4) 不做破坏性覆盖操作。",
+      "files": []
+    }
+  ]
+}

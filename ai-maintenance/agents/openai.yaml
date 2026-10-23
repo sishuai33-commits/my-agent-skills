@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI 环境维护"
+  short_description: "独立检查各端指令、技能与配置，定位冲突并验证已授权的修复"
+  default_prompt: "使用 $ai-maintenance 对我的 AI 工作环境做一次阶段复盘，核对当前生效状态、近期变化和上轮遗留问题。"
