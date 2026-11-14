@@ -44,6 +44,26 @@ browser-act browser list | grep -q xhs || {
 }
 ```
 
+## 提取命令初始化
+
+先将本次实际加载的 `SKILL.md` 路径解析为绝对真源目录；下面以本机发现入口为例，其他入口替换该参数，不按当前工作目录找 `scripts/`。在执行提取的同一 shell 中先定义函数：
+
+```bash
+XHS_SKILL_ROOT="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().parent)' "$HOME/.claude/skills/xiaohongshu/SKILL.md")"
+xhs_extract() {
+  local script="${1:?需要提取脚本名}" js
+  shift
+  js="$(python3 "$XHS_SKILL_ROOT/scripts/$script" "$@")" || return
+  if [[ -z "${js//[[:space:]]/}" ]]; then
+    printf '%s\n' '提取脚本未生成 JavaScript；不调用浏览器' >&2
+    return 1
+  fi
+  browser-act --session xhs eval "$js"
+}
+```
+
+提取脚本只打印 JavaScript，不自行访问网页。本机 browser-act 随包 `guide/baseline/references/core-commands.md` 定义的接口是 `browser-act --session <name> eval "JavaScript"`；**不能把 JS 交给 shell 的 `eval`**。脚本失败或空输出必须停止，不能把空输出解释为无笔记。
+
 ## 登录检查
 
 ```bash
@@ -76,7 +96,7 @@ browser-act --session xhs navigate "https://www.xiaohongshu.com/search_result/?k
 browser-act --session xhs wait stable
 
 # 3. 提取结果
-eval "$(python scripts/extract-search.py --limit 20)"
+xhs_extract extract-search.py --limit 20
 ```
 
 ### 输出格式
@@ -113,7 +133,7 @@ eval "$(python scripts/extract-search.py --limit 20)"
 ```bash
 browser-act --session xhs scroll down --amount 3000
 browser-act --session xhs wait stable
-eval "$(python scripts/extract-search.py --limit 20)"
+xhs_extract extract-search.py --limit 20
 # 当 hasMore: false 时停止
 ```
 
@@ -136,10 +156,10 @@ browser-act --session xhs navigate "https://www.xiaohongshu.com/explore/{note_id
 browser-act --session xhs wait stable
 
 # 3. 提取笔记详情
-eval "$(python scripts/extract-note-detail.py {note_id})"
+xhs_extract extract-note-detail.py "{note_id}"
 
 # 4. 提取初始评论
-eval "$(python scripts/extract-note-comments.py {note_id})"
+xhs_extract extract-note-comments.py "{note_id}"
 ```
 
 ### 输出格式（笔记详情）
@@ -191,10 +211,10 @@ browser-act --session xhs navigate "https://www.xiaohongshu.com/user/profile/{us
 browser-act --session xhs wait stable
 
 # 3. 提取用户资料
-eval "$(python scripts/extract-user-profile.py {user_id})"
+xhs_extract extract-user-profile.py "{user_id}"
 
 # 4. 提取用户笔记列表
-eval "$(python scripts/extract-user-notes.py --limit 30)"
+xhs_extract extract-user-notes.py --limit 30
 ```
 
 ### 输出格式（用户资料）

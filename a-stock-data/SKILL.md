@@ -216,18 +216,32 @@ def tencent_quote(codes: list[str]) -> dict[str, dict]:
     """
     批量拉取腾讯财经实时行情。
     codes: ["688017", "300476", "002463"]
-    也支持指数: ["000001", "000300", "399006"]
-    也支持ETF: ["510050", "510300"]
-    返回: {code: {name, price, pe_ttm, pb, mcap, ...}}
+    指数必须明确交易所: ["sh000001", "sh000300", "sz399006"]
+    ETF 示例: ["sh510050", "sh510300"]；裸 5 开头代码按沪市处理。
+    裸代码保留个股兼容口径，000001 始终指 sz000001，不猜成指数。
+    显式前缀/后缀输入返回小写交易所+代码键；裸输入仍返回裸代码键。
+    因此 ["000001", "sh000001"] 返回两个不同键，不覆盖同码股票/指数。
+    同一证券同时用裸/显式输入时保留两个请求键（别名），只请求一次。
     """
-    prefixed = []
+    import re
+
+    aliases = {}
     for c in codes:
-        if c.startswith(("6", "9")):
-            prefixed.append(f"sh{c}")
-        elif c.startswith("8"):
-            prefixed.append(f"bj{c}")
+        c = c.strip().lower()
+        match = re.fullmatch(r"(?:(sh|sz|bj)(\d{6})|(\d{6})\.(sh|sz|bj)|(\d{6}))", c)
+        if not match:
+            raise ValueError(f"无效证券代码: {c!r}；请用六位代码或 sh/sz/bj 显式交易所")
+        prefix, number, suffix_number, suffix, bare = match.groups()
+        if bare:
+            prefix = "sh" if bare.startswith(("5", "6", "9")) else ("bj" if bare.startswith("8") else "sz")
+            number, output_key = bare, bare
         else:
-            prefixed.append(f"sz{c}")
+            prefix, number = prefix or suffix, number or suffix_number
+            output_key = prefix + number
+        aliases.setdefault(prefix + number, set()).add(output_key)
+    prefixed = list(aliases)
+    if not prefixed:
+        return {}
 
     url = "https://qt.gtimg.cn/q=" + ",".join(prefixed)
     req = urllib.request.Request(url)
@@ -239,12 +253,13 @@ def tencent_quote(codes: list[str]) -> dict[str, dict]:
     for line in data.strip().split(";"):
         if not line.strip() or "=" not in line or '"' not in line:
             continue
-        key = line.split("=")[0].split("_")[-1]
+        key = line.split("=")[0].split("_")[-1].strip().lower()
+        if key not in aliases:
+            continue
         vals = line.split('"')[1].split("~")
         if len(vals) < 53:
             continue
-        code = key[2:]
-        result[code] = {
+        quote = {
             "name":         vals[1],
             "price":        float(vals[3]) if vals[3] else 0,
             "last_close":   float(vals[4]) if vals[4] else 0,
@@ -265,6 +280,8 @@ def tencent_quote(codes: list[str]) -> dict[str, dict]:
             "vol_ratio":    float(vals[49]) if vals[49] else 0,
             "pe_static":    float(vals[52]) if vals[52] else 0,
         }
+        for output_key in aliases[key]:
+            result[output_key] = quote
     return result
 
 # 用法: 个股
@@ -273,10 +290,10 @@ for code, q in quotes.items():
     print(f"{q['name']}({code}): {q['price']}元 PE={q['pe_ttm']} PB={q['pb']} 市值={q['mcap_yi']}亿")
 
 # 用法: 指数 — sh000001=上证指数, sh000300=沪深300, sz399006=创业板指
-index_quotes = tencent_quote(["000001", "000300", "399006"])
+index_quotes = tencent_quote(["sh000001", "sh000300", "sz399006"])
 
 # 用法: ETF — sh510050=上证50ETF, sh510300=沪深300ETF
-etf_quotes = tencent_quote(["510050", "510300"])
+etf_quotes = tencent_quote(["sh510050", "sh510300"])
 ```
 
 #### 腾讯财经字段索引速查（实测校准 2026-05-03）
@@ -881,6 +898,7 @@ def dragon_tiger_board(code: str, trade_date: str, look_back: int = 30) -> dict:
 
     # 2. 最近上榜的买卖席位
     seats = {"buy": [], "sell": []}
+    buy_data, sell_data = [], []
     if records:
         latest_date = records[0]["date"]
         # 买入席位
