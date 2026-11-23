@@ -98,7 +98,7 @@
 
 ### KE-001 · ke DFD v3 → Dagre 迭代对比（2026-07-25/26）
 
-- **来源**：自家实战，~/diagrams/2026-07-25T221500/（v2/v3 手调 SVG）+ ~/diagrams/2026-07-26T100000/（Dagre 版 JSON）
+- **来源**：自家实战，历史本机归档路径（当前本机已不存在，仅留模式复盘）：`~/diagrams/2026-07-25T221500/`（v2/v3 手调 SVG）+ `~/diagrams/2026-07-26T100000/`（Dagre 版 JSON）
 - **图类型**：DFD L1
 - **为什么好（修复后）**：
   - v3 失败版踩中反模式 #1 God Diagram + #2 Boxes&Lines Soup + #7 Mixed Abstractions：112 节点塞入所有辅助存储/回灌线/质量监督线，L1 画成 L2
@@ -107,7 +107,7 @@
 - **可复用模式**：
   - DFD L1 的**刻意不画清单**实例：辅助存储（D5/D6/D7）不画、回灌细节不画、监督线不画
   - "先 Dagre 出拓扑骨架，再决定是否精修"的两阶段流程
-- **快照/链接**：~/diagrams/2026-07-26T100000/dfd-ke-l1-dagre.json；飞书画板 https://acnhcoyajo3n.feishu.cn/docx/KmRId9JIvomV25xIvuFcwqKAn9e
+- **快照/链接**：`~/diagrams/2026-07-26T100000/dfd-ke-l1-dagre.json`（历史本机归档路径，当前本机已不存在，仅留模式复盘）；飞书画板 https://acnhcoyajo3n.feishu.cn/docx/KmRId9JIvomV25xIvuFcwqKAn9e
 
 ---
 

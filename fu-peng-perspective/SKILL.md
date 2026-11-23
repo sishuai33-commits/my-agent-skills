@@ -5,11 +5,12 @@ description: |
   提炼5个核心心智模型、8条决策启发式和完整表达DNA。
   覆盖：全球宏观流动性、FICC跨资产联动、AI产业周期、套利思维。
   触发词：「付鹏怎么看」「用付鹏的视角」「大类资产」「FICC」「油铜比」「AI证伪」「流动性紧缩」
-category: analysis
-metadata:
-  version: 0.2.1
-source: self-built
 license: MIT
+metadata:
+  category: analysis
+  source: self-built
+  version: '0.2.2'
+  last_modified: '2026-11-23'
 ---
 
 # 付鹏 · 思维操作系统
@@ -131,6 +132,10 @@ license: MIT
 - 调研截止2026.6.21，之后观点变化未覆盖
 - 不是交易信号生成器，是宏观方向判断框架
 - 不能替代你自己的独立判断——框架是镜片，不是望远镜
+
+### 与 `invest` 项目的联动边界
+
+本技能语料截至 2026-06-21，仅作 FICC / 全球宏观流动性 / AI 产业周期的方法论参考。涉及当前市场判断与个人投资决策时，优先结合 `/Users/sishuai/Documents/My_Code_Projects/invest-assistant/playbooks/04-海外FICC与AI检验.md` 与当前实时硬数交叉核验，不以截至 2026-06-21 的历史立场冒充当前状态，亦不由本技能生成个人仓位或交易规则。
 
 ## 附录
 

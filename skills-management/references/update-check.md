@@ -8,9 +8,13 @@
 ~/Documents/My_Skills_Library/技能库_自建/skills-management/scripts/skills-check.sh
 # 离线（不联网，只看本地 origin 引用）
 .../skills-check.sh --no-fetch
+# 隔离 $HOME 环境（如 Antigravity CLI profile 下 $HOME 可能指向 ~/.agy-profiles/main）
+HOME=/Users/sishuai /Users/sishuai/Documents/My_Skills_Library/技能库_自建/skills-management/scripts/skills-check.sh
 # 隔离测试（自定义发现根）
 SKILLS_ROOTS=/tmp/x:y .../skills-check.sh
 ```
+
+默认扫描 4 个宿主发现根并按 `realpath` 去重：`$HOME/.claude/skills`、`$HOME/.agents/skills`、`$HOME/.gemini/config/skills`、`$HOME/.dsh/skills`（均可用 `SKILLS_ROOTS` 覆盖）。隔离 `$HOME` 环境下不可依赖 `~`，须使用 `/Users/sishuai/Documents/My_Skills_Library/...` 并显式设 `HOME=/Users/sishuai`。
 
 退出码：`0` 全部可核且无变化（含无上游本地项）/ `2` 有更新 / `3` 含未知 / `1` 脚本自身错。更新与未知并存返回 `3`，汇总同时保留 `updates=1 unknown=1`。联网 fetch 会更新远端引用，但不改工作区、不升级。
 

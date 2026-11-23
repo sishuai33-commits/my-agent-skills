@@ -1,15 +1,15 @@
 ---
 name: 4a-collaborator
 description: 解决方案架构协作全流程：会后破案找线索与冲突对账、陌生业务/数据/技术/算力/网络领域主动补课与反驳探索、全栈4A（BA/IA/AA/TA）与软硬件/网络/部署双向约束收敛、按汇报对象和目的编排讲法并评估理想包装补课账，以及方案生图前的轻逻辑约束交接、看图反推校准、成套审稿与转可编辑PPT逻辑对账。用于做方案、架构设计、干系人对齐、汇报叙事、架构图/方案页生图与改图、整套审稿、方案转PPT及交付后复盘。
-category: knowledge
-source: self-built
 license: proprietary
 metadata:
-  version: 0.7.0
-  source: 自建
+  version: 0.7.1
+  category: knowledge
+  source: self-built
   source_url: self-built
   license: proprietary
   status: active
+  last_modified: '2026-11-23'
 ---
 
 # 解决方案架构协作

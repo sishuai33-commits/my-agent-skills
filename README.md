@@ -7,11 +7,12 @@
 2026-11-16 对 `~/.claude/skills/`、`~/.agents/skills/` 的文件级核对：以下本目录原件有入口，两个入口指向同一 realpath 不算两套技能：
 
 - `4a-collaborator/`：方案与架构协作。
-- `a-stock-data/`：行情与投研数据代码示例。
+- `solution-slide-production/`：方案汇报制图与可编辑 PPT（2026-11-23 从量子城市去耦合升格为跨项目共享原件）。
+- `a-stock-data/`：行情与投研数据代码示例（第三方开源适配，上游与本地契约修复见其 `UPSTREAM.md`）。
 - `ai-maintenance/`：有界AI环境审查与授权修复。
 - `skills-management/`：来源、部署、回退及验收。
 - `chen-laoshi-perspective/`、`fu-peng-perspective/`：有来源和适用边界的方法参考，不是真人或收益保证。
-- `xiaohongshu/`：已有浏览器能力下的内容提取。
+- `xiaohongshu/`：基于 `web-access` Chrome CDP 的小红书内容提取。
 
 本次核对只证明链接和文件存在，不证明外部接口、各端原生运行或效果。
 

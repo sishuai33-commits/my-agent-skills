@@ -1,29 +1,44 @@
 ---
 name: xiaohongshu
-description: 读取小红书搜索结果、笔记正文与评论、用户主页及笔记列表；通过当前宿主浏览器浏览并保留可追溯链接。内容调研使用，发布、点赞、关注和评论发送不在本技能范围。
+description: 读取小红书搜索结果、笔记正文与评论、用户主页及笔记列表；通过 web-access Chrome CDP 复用日常浏览器登录态并保留可追溯链接。内容调研使用，发布、点赞、关注和评论发送不在本技能范围。
 metadata:
   source_path: /Users/sishuai/Documents/My_Skills_Library/技能库_自建/xiaohongshu
   adapted_for: Codex
-  source_version: '1.0.1'
+  source_version: '2.0.0'
   adapted_on: '2026-11-23'
+  requires: web-access
 ---
 
 # 小红书读取
 
-将 CC/Pi 的小红书读取经验（v1.0.1）适配到当前宿主浏览器。先用 `mcp__cua_repl` 提供的浏览器入口并读取其 API 文档；优先已有授权的登录会话。无需先安装 `browser-act` 或创建 stealth 浏览器；不执行原技能中的 shell eval、自动安装和浏览器删除流程。
+将自建 `xiaohongshu` 技能（v2.0.0）适配到 Codex，统一通过 `web-access` Chrome CDP Proxy 复用日常浏览器登录态读取小红书内容。
 
-## 三类请求
+## 路径解析与前置就绪
+
+不硬编码任何宿主技能目录；优先解析当前加载的 `SKILL.md` 真源路径，未显式提供时回退到本机真源目录：
+
+- `xiaohongshu` 真源：`/Users/sishuai/Documents/My_Skills_Library/技能库_自建/xiaohongshu`（5 个提取脚本位于其 `scripts/` 下）
+- `web-access` 真源：`/Users/sishuai/Documents/My_Skills_Library/社区第三方/web-access`
+
+开始站内操作前：
+1. 运行 `node "$WEB_ACCESS_SKILL_ROOT/scripts/check-deps.mjs"` 确认共享 CDP Proxy（默认 `http://localhost:3456`）连接就绪；`exit 0` 直接复用，不重启共享 Proxy。
+2. 向用户展示 `web-access` 自动化风险提示（存在账号封禁风险，继续操作即视为接受）。
+3. 通过 `POST /new`（URL 放 POST body）创建本次任务专属后台 tab 并记录 `XHS_TARGET_ID` 与 `XHS_TARGET_OWNED=1`；不操作用户已有 tab。
+
+## 三类请求与提取规则
 
 | 输入 | 工作与输出 |
 |---|---|
-| 搜索关键词 | 通过站内搜索和实际可见筛选控件选排序/类型，返回标题、作者、可见互动量、来源链接及采集时间 |
-| 笔记 URL | 读取正文、标签、图文或视频信息；需要时展开评论，记录实际读取数量及是否尚有更多 |
-| 用户主页 URL | 读取公开简介与当前可见笔记列表，按任务范围滚动，不将未加载记录当不存在 |
+| 搜索关键词 | `POST /navigate?target=ID` 进入搜索页（需要排序/类型筛选时用 `/eval` + `/click` 操作真实筛选控件），调用 `extract-search.py` 通过 `POST /eval` 提取标题、作者、互动量、`note_id` 与 `xsecToken` |
+| 笔记 URL / `note_id` + `xsecToken` | 保留站内观察到的完整 URL 参数并用 `POST /navigate?target=ID` 打开，调用 `extract-note-detail.py` 与 `extract-note-comments.py` 读取正文、标签与评论，记录实际读取数与 `hasMore` |
+| 用户主页 URL / `user_id` | 导航到用户主页后调用 `extract-user-profile.py` 与 `extract-user-notes.py` 读取公开资料与已加载笔记列表（用户笔记 `id` 恒为 `null`，需结合搜索或真实卡片链接定位笔记详情） |
 
-用真实页面卡片/链接进入详情。小红书链接常带 `xsec_token` 等上下文参数，保留观察到的完整 URL；不要根据 `note_id` 自造 token，也不要去掉查询参数再据错误页判定笔记已删除。页面重定向时回到正常站内导航核实一次；持续受限就准确报告。
+## 协议与安全边界
 
-旧脚本依赖 `window.__INITIAL_STATE__` 和 Vue 状态，其结构、可见性与权限不保证当前仍适用。当前 CUA 只允许其文档明确支持的观察与 DOM 操作，不把旧状态提取代码直接迁入，不调用未观察的接口。翻页读取时按笔记/评论唯一标识去重并记录已输出数与已加载数，**不得把 `hasMore=false` 或停止滚动直接等同于已输出全量结果**；不要输出身份凭据或无关个人字段。
+- **禁止 shell `eval`**：5 个 `extract-*.py` 仅生成 JS 表达式；统一通过 `curl -sS -X POST "$XHS_CDP_PROXY/eval?target=$XHS_TARGET_ID" --data-binary @-` 走 stdin 发送给 CDP Proxy 并解包返回 JSON 的 `value` 字段。脚本报错或输出为空时立即停止，不把空输出当作无结果。
+- **保留完整 URL 参数**：小红书链接依赖 `xsec_token` 等上下文参数，一律走 POST body 传给 `/new` 与 `/navigate`，不得裁剪参数或根据 `note_id` 自造 token；遇到重定向先回到站内导航核实，持续受限则如实报告。
+- **数据就绪与回退**：`/new` 与 `/navigate` 返回不代表 `window.__INITIAL_STATE__` 已就绪，需在 15 秒观察窗口内确认目标状态；若页面结构变更导致状态提取不可用，改用 `/eval` 读取可见 DOM，不编造字段。
+- **翻页与防风控**：滚动使用 `GET /scroll?target=ID&y=3000&direction=down`，按笔记/评论唯一 `id` 去重并记录已输出数与已加载数；**不得把 `hasMore=false` 或停止滚动直接等同于全量结果**，连续无新增即停止并注明覆盖缺口。控制频率，避免高并发短时批量 `/new` 触发反爬。
+- **登录、清理与只读范围**：如登录确实阻断目标，请用户在日常浏览器完成登录后刷新继续；任务结束**仅关闭本次新建的 `targetId`**（`GET /close?target=ID`），绝不关闭用户已有 tab，也不停止共享 Proxy。读取请求不授权点赞、收藏、关注、私信、发评论或发布笔记。
 
-如登录确实阻断目标，让用户在浏览器完成登录后继续。为本次任务创建并记录归属标签页，保留用户已有标签，结束仅关闭自己创建的标签。读取请求不授权点赞、收藏、关注、私信、发评论或发布笔记。
-
-结果区分作者陈述、评论观点与助手推断；互动量保留页面单位和采集时点。无来源链接或不可见字段就注明缺口，不编造热度和全量结论。
+结果区分作者陈述、评论观点与助手推断；互动量保留原始单位与采集时点，无来源链接或不可见字段如实注明缺口。

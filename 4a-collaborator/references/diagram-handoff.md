@@ -9,7 +9,7 @@
 适用于对外汇报、客户共创、内部交付评审等需要高视觉质感并最终落成 PPT 的方案页。
 
 ### 1.1 发现配套制图 / PPT 技能
-优先查找当前项目内现用技能（如项目目录 `skills/solution-slide-production/SKILL.md`）或当前宿主可用的生图 / PPT 技能。读到实际文件后按其视觉规范与工具链路执行；若项目未配备专用制图技能，沿用当前客户/企业汇报视觉参考与本节逻辑交接规范。
+优先使用跨端已挂载的共享 `solution-slide-production` 技能（以当前宿主已列出的技能为准，常见挂载路径包括 `~/.agents/skills/solution-slide-production/SKILL.md`、`~/.claude/skills/solution-slide-production/SKILL.md`、`~/.gemini/config/skills/solution-slide-production/SKILL.md` 等），同时兼容当前项目内定制版（如项目目录 `skills/solution-slide-production/SKILL.md`；若项目存在定制规范，按当前项目需要选用）或其他宿主可用的生图 / PPT 技能。读到实际文件后按其视觉规范与工具链路执行；若均未配备，沿用当前客户/企业汇报视觉参考与本节逻辑交接规范。
 
 ### 1.2 生图前交接物：每页轻逻辑约束卡（锁逻辑，不锁版式）
 4A 在生图前为每页准备一份半屏以内的**轻逻辑约束卡**（模板见 `deliverable-templates.md`），交给生图环节：
@@ -53,6 +53,7 @@ PPT 重建、原生对象检查、移动模块试改与视觉预览验收由对�
 优先使用当前环境列出的 `diagram-design`。若未列出，按以下本机候选路径查找，读到实际文件后才算已接入：
 1. `~/.agents/skills/diagram-design/SKILL.md`
 2. `~/.claude/skills/diagram-design/SKILL.md`
+3. `~/.gemini/config/skills/diagram-design/SKILL.md`
 
 相对引用以实际技能目录为基准，不安装、不复制、不修改它的全局样式。若均不存在，简短说明缺失并按 `diagram-methodology.md` 的语义规则直接制作 HTML/SVG，明确为回退路径。
 
@@ -65,4 +66,4 @@ PPT 重建、原生对象检查、移动模块试改与视觉预览验收由对�
 ### 2.3 HTML 语义口径与实际验收
 - 架构内容、项目决定和用户要求优先于绘图示例；不为了节点预算删除影响结论的责任、依赖或失败路径。
 - 容器嵌套表达包含关系，静态能力图不强加连线；不把置信度、异步消息、返回消息、信任边界全画成同一种虚线。
-- 验收顺序：①对照约束卡回读节点、关系与状态；②运行实际存在的 `scripts/self_check.py`（未安装的仓库脚本不假称运行）；③用可用浏览器打开实看中文换行、截字、穿线与缩放可读性；无渲染能力时明确说明“尚未完成视觉验证”。
+- 验收顺序：①对照约束卡回读节点、关系与状态；②运行 `diagram-design` 技能目录下实际存在的 `scripts/self_check.py`（指 `diagram-design` 自身的自检脚本，而非 `4a-collaborator` 目录；未安装或缺失时不假称运行）；③用可用浏览器打开实看中文换行、截字、穿线与缩放可读性；无渲染能力时明确说明“尚未完成视觉验证”。

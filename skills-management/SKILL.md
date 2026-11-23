@@ -3,8 +3,8 @@ name: skills-management
 description: 管理已明确要求的技能安装、更新、停用和审计；核对宿主、来源、激活路径、回退与实际效果。不因普通任务关键词自动恢复已撤技能。
 license: MIT
 metadata:
-  version: 4.2.0
-  last_modified: '2026-09-20'
+  version: 4.3.0
+  last_modified: '2026-11-23'
   category: knowledge
   source: self-built
   skill-author: 指挥官
@@ -22,6 +22,8 @@ metadata:
 | Codex 系统技能 | 随应用管理；可读以核对方法，不手改系统缓存 |
 | Codex 托管插件 | 使用应用支持的插件/配置入口；冲突先遵循宿主及用户要求，不直接改版本缓存 |
 | CC / Pi 手工技能 | 先核对实际激活目录及软链接，按当前端的配置与校验处理；不推定 Codex 命令适用 |
+| Antigravity 全局技能 | 发现层 `~/.gemini/config/skills/`；注意 Antigravity CLI 隔离 profile 下 `$HOME` 可能指向 `~/.agy-profiles/main`，跑跨端脚本或依赖宿主字体/Playwright 时需显式用真实路径 `/Users/sishuai/...` 或 `HOME=/Users/sishuai` |
+| DSH 技能 | 发现层 `~/.dsh/skills/`；与其他端共享同一原件软链时按多端共享规则核对 |
 | 多端共享软链接 | 修改解析后的唯一原件；记录受影响端，不能把“只改 Codex”当作共享修改无影响 |
 | 双发现根重复 | 同一技能可同时挂在 `~/.claude/skills/` 与 `~/.agents/skills/`。Pi 按 realpath 去重，同目标只算一个；**同名而目标不同**才冲突（先发现者胜）。修法是让冲突项指向同一原件，不是删掉一边 |
 | Codex 适配入口 | `codex-adapters/` 是语义入口而非上游正文副本，frontmatter 记 `source_version`；升级上游后核对该字段，必要时重新派生 |
@@ -49,7 +51,11 @@ metadata:
 ```bash
 ~/Documents/My_Skills_Library/技能库_自建/skills-management/scripts/skills-check.sh           # 联网比对
 ~/Documents/My_Skills_Library/技能库_自建/skills-management/scripts/skills-check.sh --no-fetch # 离线
+# 隔离 $HOME 环境（如 Antigravity CLI profile 下 $HOME 可能指向 ~/.agy-profiles/main）：
+HOME=/Users/sishuai /Users/sishuai/Documents/My_Skills_Library/技能库_自建/skills-management/scripts/skills-check.sh
 ```
+
+默认扫描 4 个宿主发现根（`$HOME/.claude/skills`、`$HOME/.agents/skills`、`$HOME/.gemini/config/skills`、`$HOME/.dsh/skills`）并按 `realpath` 去重；在隔离 `$HOME` 环境中须使用 `/Users/sishuai/Documents/My_Skills_Library/...` 绝对路径并显式设 `HOME=/Users/sishuai`（或通过 `SKILLS_ROOTS` 指定扫描根）。
 
 三类结果分别处置：
 

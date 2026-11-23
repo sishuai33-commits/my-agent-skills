@@ -18,7 +18,8 @@
 | 触发过宽或路由重叠 | 用正例、邻近但无关的请求检查实际路由；格式词、产品名不能独自决定写入目标 |
 | 文档说工具不可用或必须走固定端 | 核对当前宿主工具、插件和授权；保留真实限制，纠正跨端外推 |
 | 改了主文件仍行为冲突 | 追到本轮实际引用的参考文件、旧命令、Agent 和默认输出要求 |
-| 技能是否落后上游 | 跑 `技能库_自建/skills-management/scripts/skills-check.sh`：A 组仅 fetch 成功后判断当前落后数，离线 CACHED 与网络失败 UNKNOWN 不算同步；B 组按 `UPSTREAM.md` 同时核版本（如有）和 sha256，缺基准为 UNKNOWN；C 组缺档案同为未知。退出码 0=全部可核无变、2=有更新、3=含未知、1=自身错误；更新+未知返回 3 并保留双标识 |
+| 技能是否落后上游 | 跑 `/Users/sishuai/Documents/My_Skills_Library/技能库_自建/skills-management/scripts/skills-check.sh`（Antigravity CLI 隔离 profile 下 `$HOME` 可能指向 `~/.agy-profiles/main`，须用绝对路径并显式加 `HOME=/Users/sishuai` 或设置 `SKILLS_ROOTS`，避免扫错 4 端发现根）：A 组仅 fetch 成功后判断当前落后数，离线 CACHED 与网络失败 UNKNOWN 不算同步；B 组按 `UPSTREAM.md` 同时核版本（如有）和 sha256，缺基准为 UNKNOWN；C 组缺档案同为未知。退出码 0=全部可核无变、2=有更新、3=含未知、1=自身错误；更新+未知返回 3 并保留双标识 |
+| 外部依赖与 MCP 契约实测 | 对依赖外部 CLI、浏览器或 MCP 工具的技能，不能只看本地单测通过；须对关键外部命令做无副作用的只读就绪探针，并核对 Skill 正文要求的参数/字段是否已在真实 MCP `inputSchema` 中暴露 |
 
 工具参数语义、失败条件和必要格式通常要保留。合法重复可以增强上下文独立性；只有存在矛盾、误触发或实际维护问题时才建议合并。审计也检查本维护技能，不能因为它是检查者就免检。
 

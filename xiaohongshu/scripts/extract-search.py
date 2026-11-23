@@ -17,7 +17,7 @@ def main():
     const unwrap = v => v?.value !== undefined ? v.value : v?._value !== undefined ? v._value : v;
     const feeds = unwrap(window.__INITIAL_STATE__?.search?.feeds);
     if (!feeds || !feeds.length) {{
-      return JSON.stringify({{ error: true, message: 'feeds not loaded or empty — verify page is a search result page and wait stable has completed' }});
+      return JSON.stringify({{ error: true, message: 'feeds not loaded or empty — verify page is a search result page and initial data has loaded' }});
     }}
     const s = window.__INITIAL_STATE__?.search;
     const items = feeds.slice({args.offset}, {args.offset + args.limit}).map(item => {{

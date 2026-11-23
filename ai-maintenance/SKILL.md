@@ -2,7 +2,7 @@
 name: ai-maintenance
 description: 对个人 AI 工作环境做阶段复盘、跨端体检和已授权修复，检查全局指令、技能、Agent、工具与接续配置的过时、冲突和实际生效情况。普通业务任务、单个代码缺陷和投资复盘不触发。
 metadata:
-  version: 1.0.0
+  version: 1.1.0
   source: self-built
 ---
 

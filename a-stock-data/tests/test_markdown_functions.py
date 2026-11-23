@@ -7,17 +7,39 @@ from types import SimpleNamespace
 import unittest
 import urllib.request
 
-SKILL = Path(__file__).resolve().parents[1] / "SKILL.md"
+SKILL_DIR = Path(__file__).resolve().parents[1]
+SKILL = SKILL_DIR / "SKILL.md"
+REFERENCES_DIR = SKILL_DIR / "references"
+EXPECTED_REFERENCE_FILES = [
+    "layer1-quote.md",
+    "layer2-research.md",
+    "layer3-signals.md",
+    "layer4-capital-chips.md",
+    "layer5-news.md",
+    "layer6-fundamentals.md",
+    "layer7-announcements.md",
+    "workflows-and-faq.md",
+]
+
+
+def _markdown_sources():
+    sources = [SKILL]
+    if REFERENCES_DIR.is_dir():
+        sources.extend(sorted(REFERENCES_DIR.glob("*.md")))
+    return sources
 
 
 def load_function(name, namespace):
-    for block in re.findall(r"```python\n(.*?)```", SKILL.read_text(), re.S):
-        if f"def {name}(" not in block:
-            continue
-        tree = ast.parse(block)
-        fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
-        exec(compile(ast.Module(body=[fn], type_ignores=[]), str(SKILL), "exec"), namespace)
-        return namespace[name]
+    for md_file in _markdown_sources():
+        for block in re.findall(r"```python\n(.*?)```", md_file.read_text(encoding="utf-8"), re.S):
+            if f"def {name}(" not in block:
+                continue
+            tree = ast.parse(block)
+            fn = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name), None)
+            if fn is None:
+                continue
+            exec(compile(ast.Module(body=[fn], type_ignores=[]), str(md_file), "exec"), namespace)
+            return namespace[name]
     raise AssertionError(name)
 
 
@@ -80,6 +102,24 @@ class DragonTests(unittest.TestCase):
         self.assertEqual(result, {"records": [], "seats": {"buy": [], "sell": []},
                                  "institution": {"buy_amt": 0, "sell_amt": 0, "net_amt": 0}})
         self.assertEqual(len(calls), 1)
+
+
+class StructureTests(unittest.TestCase):
+    def test_main_skill_is_concise_and_references_exist(self):
+        lines = SKILL.read_text(encoding="utf-8").splitlines()
+        self.assertLess(len(lines), 200, f"SKILL.md too long: {len(lines)} lines")
+        for fname in EXPECTED_REFERENCE_FILES:
+            target = REFERENCES_DIR / fname
+            self.assertTrue(target.is_file(), f"Missing reference file: {target}")
+        referenced = set(re.findall(r"references/[A-Za-z0-9._-]+\.md", SKILL.read_text(encoding="utf-8")))
+        self.assertTrue(referenced, "SKILL.md should route to references/*.md")
+        for rel in referenced:
+            self.assertTrue((SKILL_DIR / rel).is_file(), f"Broken reference in SKILL.md: {rel}")
+
+    def test_upstream_manifest_exists(self):
+        upstream = SKILL_DIR / "UPSTREAM.md"
+        self.assertTrue(upstream.is_file(), "Missing UPSTREAM.md")
+        self.assertIn("<!-- skills-check:", upstream.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
