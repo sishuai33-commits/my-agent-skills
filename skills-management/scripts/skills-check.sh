@@ -33,8 +33,9 @@ fi
 if [ -n "${SKILLS_ROOTS:-}" ]; then
   IFS=':' read -r -a ROOTS <<< "$SKILLS_ROOTS"
 else
-  ROOTS=( "$HOME/.claude/skills" "$HOME/.agents/skills" )
+  ROOTS=( "$HOME/.claude/skills" "$HOME/.agents/skills" "$HOME/.gemini/config/skills" "$HOME/.dsh/skills" )
 fi
+export GIT_TERMINAL_PROMPT=0
 TMP=$(mktemp -d) || exit 1
 trap 'rm -rf "$TMP"' EXIT
 

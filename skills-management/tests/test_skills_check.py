@@ -32,6 +32,8 @@ elif cmd == ["status", "--porcelain"]:
 elif cmd == ["remote"]:
     if not os.environ.get("FAKE_LOCAL"): print("origin")
 elif cmd[:1] == ["fetch"]:
+    if os.environ.get("FAKE_REQUIRE_NO_PROMPT") and os.environ.get("GIT_TERMINAL_PROMPT") != "0":
+        sys.exit(129)
     sys.exit(128 if os.environ.get("FAKE_FETCH_FAIL") else 0)
 elif cmd[:2] == ["rev-parse", "--verify"]:
     sys.exit(1 if os.environ.get("FAKE_NO_BRANCH") else 0)
@@ -169,6 +171,10 @@ class CheckTests(unittest.TestCase):
         self.skill()
         self.archive("a" * 64)
         self.assertIn("updates=1 unknown=1", self.run_check(code=3, FAKE_BEHIND="2", FAKE_CURL_FAIL="1"))
+
+    def test_fetch_disables_terminal_prompt(self):
+        self.skill()
+        self.assertIn("UNCHANGED", self.run_check(FAKE_REQUIRE_NO_PROMPT="1"))
 
     def test_invalid_argument_is_own_error(self):
         self.run_check("--bad-flag", code=1)

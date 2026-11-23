@@ -19,7 +19,8 @@
 
 | 对象 | 唯一原件 |
 |---|---|
-| card-compiler | `~/Documents/My_Code_Projects/tongle/skills/card-compiler/`；本目录旧副本已归档 |
+| tongle-v4-curation | `~/Documents/My_Code_Projects/tongle-v4/skill/`（现用 Tongle V4 认知整理技能） |
+| card-compiler | `~/Documents/My_Code_Projects/tongle/skills/card-compiler/`（2026-11-23 已撤链停用，原件保留；本目录旧副本已归档） |
 | invest | `~/Documents/My_Code_Projects/invest-assistant/` |
 | nuwa / huashu-nuwa | `~/Documents/My_Skills_Library/社区第三方/nuwa-skill/`；发现入口为软链，属于第三方包及本地适配，不是发现目录直下独立原件 |
 
