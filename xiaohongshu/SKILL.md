@@ -2,10 +2,10 @@
 name: xiaohongshu
 description: 小红书内容抓取 — 关键词搜索、笔记详情+评论、用户主页+笔记列表。依赖 browser-act stealth 浏览器。触发：小红书、红书、xhs、rednote、xiaohongshu
 metadata:
-  version: 1.0.0
+  version: 1.0.1
   created: '2026-06-13'
   requires: browser-act
-  last_modified: '2026-06-13'
+  last_modified: '2026-11-16'
   skill-author: 指挥官
 category: infra
 source: self-built
@@ -50,6 +50,9 @@ browser-act browser list | grep -q xhs || {
 
 ```bash
 XHS_SKILL_ROOT="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().parent)' "$HOME/.claude/skills/xiaohongshu/SKILL.md")"
+# 浏览器配置可名为xhs；会话名必须是本次任务唯一值，不借用其他任务会话。
+XHS_SESSION="xhs-$(python3 -c 'import uuid; print(uuid.uuid4().hex[:12])')"
+XHS_SESSION_OWNED=0
 xhs_extract() {
   local script="${1:?需要提取脚本名}" js
   shift
@@ -58,7 +61,7 @@ xhs_extract() {
     printf '%s\n' '提取脚本未生成 JavaScript；不调用浏览器' >&2
     return 1
   fi
-  browser-act --session xhs eval "$js"
+  browser-act --session "$XHS_SESSION" eval "$js"
 }
 ```
 
@@ -67,14 +70,13 @@ xhs_extract() {
 ## 登录检查
 
 ```bash
-# 打开小红书首页，检查登录状态
-browser-act --session xhs browser open <browser_id> "https://www.xiaohongshu.com"
-browser-act --session xhs wait stable
-browser-act --session xhs state | grep -q "我" || {
-  echo "未登录，需要 headed 模式登录："
-  echo "browser-act --session xhs browser open <browser_id> 'https://www.xiaohongshu.com' --headed"
-  exit 1
-}
+# 使用本次唯一会话打开已获准使用的浏览器；成功创建后才标记归属。
+browser-act --session "$XHS_SESSION" browser open <browser_id> "https://www.xiaohongshu.com" || exit 1
+XHS_SESSION_OWNED=1
+browser-act --session "$XHS_SESSION" wait stable
+browser-act --session "$XHS_SESSION" state
+# 检查实际登录/扫码界面；文本中出现“我”不充分证明已登录。
+# 需要扫码时仅在本会话按提示切headed登录，不关闭或借用其他任务的session。
 ```
 
 ---
@@ -90,13 +92,13 @@ URL: https://www.xiaohongshu.com/search_result/?keyword={keyword}
 
 ```bash
 # 1. 导航到搜索结果页
-browser-act --session xhs navigate "https://www.xiaohongshu.com/search_result/?keyword={关键词}"
+browser-act --session "$XHS_SESSION" navigate "https://www.xiaohongshu.com/search_result/?keyword={关键词}"
 
 # 2. 等待页面稳定
-browser-act --session xhs wait stable
+browser-act --session "$XHS_SESSION" wait stable
 
-# 3. 提取结果
-xhs_extract extract-search.py --limit 20
+# 3. 提取当前累计列表的首段
+xhs_extract extract-search.py --offset 0 --limit 20
 ```
 
 ### 输出格式
@@ -104,6 +106,7 @@ xhs_extract extract-search.py --limit 20
 ```json
 {
   "total": 44,
+  "offset": 0, "returned": 20, "nextOffset": 20,
   "hasMore": true,
   "items": [{
     "id": "...", "xsecToken": "...", "type": "normal",
@@ -131,10 +134,14 @@ xhs_extract extract-search.py --limit 20
 ### 翻页
 
 ```bash
-browser-act --session xhs scroll down --amount 3000
-browser-act --session xhs wait stable
-xhs_extract extract-search.py --limit 20
-# 当 hasMore: false 时停止
+# nextOffset < total时先读已加载但未输出的下一段，无需先滚动。
+xhs_extract extract-search.py --offset 20 --limit 20  # 20替换为上一轮nextOffset
+# 已读取完当前total且hasMore为true时，滚动再从上轮nextOffset继续。
+browser-act --session "$XHS_SESSION" scroll down --amount 3000
+browser-act --session "$XHS_SESSION" wait stable
+# 每轮按id去重；若排序/过滤重置列表，从offset 0重新读取。
+# 仅hasMore=false且nextOffset>=total才说明已消费当前加载列表；不保证源站全量。
+# 连续无新增或状态未知时停止并报覆盖缺口，不无限滚动。
 ```
 
 ---
@@ -150,10 +157,10 @@ URL: https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsecToken}&xsec_s
 
 ```bash
 # 1. 导航到笔记页（需要搜索结果中的 id 和 xsecToken）
-browser-act --session xhs navigate "https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsecToken}&xsec_source=pc_search"
+browser-act --session "$XHS_SESSION" navigate "https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsecToken}&xsec_source=pc_search"
 
 # 2. 等待页面稳定
-browser-act --session xhs wait stable
+browser-act --session "$XHS_SESSION" wait stable
 
 # 3. 提取笔记详情
 xhs_extract extract-note-detail.py "{note_id}"
@@ -205,10 +212,10 @@ URL: https://www.xiaohongshu.com/user/profile/{user_id}
 
 ```bash
 # 1. 导航到用户主页
-browser-act --session xhs navigate "https://www.xiaohongshu.com/user/profile/{user_id}"
+browser-act --session "$XHS_SESSION" navigate "https://www.xiaohongshu.com/user/profile/{user_id}"
 
 # 2. 等待页面稳定
-browser-act --session xhs wait stable
+browser-act --session "$XHS_SESSION" wait stable
 
 # 3. 提取用户资料
 xhs_extract extract-user-profile.py "{user_id}"
@@ -253,7 +260,7 @@ xhs_extract extract-user-notes.py --limit 30
 
 ## 会话管理
 
-- 完成任务后关闭会话释放资源：`browser-act session close xhs`
+- 仅关闭本次实际创建的会话：`if [ "$XHS_SESSION_OWNED" = 1 ]; then browser-act session close "$XHS_SESSION"; fi`。不得关闭固定名`xhs`或其他任务会话；若跨shell接续，先核原会话归属，不能重新造变量冒充归属。
 - 不使用时浏览器保持 idle 状态，下次直接 reopen 即可，无需重新登录
 - 长期不用登录态可能过期，需重新 headed 登录
 

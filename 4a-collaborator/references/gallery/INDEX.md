@@ -2,14 +2,14 @@
 
 > **入库纪律：无批注不入库。** 只收图不收"为什么好"，这里就是图片坟场。
 > 每条目 = 图（链接/快照）+ 图类型 + 为什么好（对标 diagram-methodology.md 原则）+ 可复用模式。
-> v2（2026-07-26）：Kimi 检索 27 正面 + 8 正误对照入库；PDF 快照存 snapshots/（链接会失效，PDF 不会）。
+> v2.1（2026-11-21）：整理跨宿主中性表述；含 27 正面 + 8 正误对照；快照存 snapshots/；文件存在不证明格式有效或来源完整，使用前核格式与内容，外链可用性另核。
 
 ## 收集机制（三通道）
 
 | 通道 | 来源 | 频率 | 质量 |
 |------|------|------|------|
-| **1. 指挥官投喂**（主力） | 工作中遇到的好图/烂图 → 丢链接或截图 → CC 批注入库 | 随时 | 最高（真实场景） |
-| **2. 批量检索**（Kimi/慢环） | 在线库定向检索 → CC 筛选批注 | 按需 | 中高 |
+| **1. 用户投喂**（主力） | 工作中遇到的好图/烂图 → 丢链接或截图 → 批注入库 | 随时 | 最高（真实场景） |
+| **2. 批量检索**（慢环） | 在线库定向检索 → 筛选批注 | 按需 | 中高 |
 | **3. 实战复盘** | 自己每次画图迭代的对比版本（失败→修复） | 每次画图后 | 高（教训最新鲜） |
 
 **烂图也收**：标注"踩了哪个反模式"（对标 methodology 第二章 12 反模式），与正面教材 **pair 绑定**（同来源正误对照教学效果最好）。
@@ -39,7 +39,7 @@
 | C4-02 | Structurizr 官方示例工作区 | **"一个模型生成多张图"的一致性活样板**——真源+投影同构，可交互验证 | [link](https://www.structurizr.com/public/1) |
 | C4-03 | System Context 示例+DSL（dotnet 文档） | 图+代码并排；Context"只画人和系统、不画技术细节"的抽象纪律 | [link](https://github.com/structurizr/dotnet/blob/master/docs/system-context-diagram.md) |
 | C4-04 | C4 示例索引（6 系统） | 一页收齐不同领域的 C4 全套，横向比较同方法在不同系统的应用 | [link](https://frameworks.readthedocs.io/en/latest/framework/C4ModelNote.html) |
-| C4-05 ⚠️ | NCSC 官方正误对照 PDF | **政府级反模式教材**：英国国家网络安全中心出品，"Confusing & Vague"（元素无定义）+"Confusing & Complicated"（彩色蜘蛛网）两张反面图+改进指导 | snapshots/ncsc-...pdf + [link](https://www.ncsc.gov.uk/pdfs/blog-post/drawing-good-architecture-diagrams.pdf) |
+| C4-05 ⚠️ | NCSC 正误对照资料（本地快照无效） | 2026-11-16核查：本地`.pdf`实际保存的是HTML 404页，不能作为已取得教材或配图的证据；旧教材描述待回源确认，未联网复核原链接。保留失败文件供追溯，不当作PDF使用。 | `snapshots/ncsc-drawing-good-architecture-diagrams.pdf`（无效） + [原链接待核](https://www.ncsc.gov.uk/pdfs/blog-post/drawing-good-architecture-diagrams.pdf) |
 
 ## 3. 泳道流程图 / BPMN
 
@@ -115,4 +115,4 @@
 
 - [ ] 中文精品：腾讯云架构中心、华为云架构图库（当前仅 CLOUD-04 一个中文）
 - [ ] 页面型案例快照：模板社区链接失效风险高，用到时先抓快照存 snapshots/
-- [ ] 华为 4A 交付件真实案例（等指挥官工作中投喂）
+- [ ] 华为 4A 交付件真实案例（随真实项目脱敏投喂）

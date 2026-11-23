@@ -5,8 +5,8 @@ category: analysis
 source: self-built
 license: MIT
 metadata:
-  version: "3.1.0"
-  last_modified: '2026-06-13'
+  version: "3.1.1"
+  last_modified: '2026-11-16'
   skill-author: 指挥官
 ---
 
@@ -24,7 +24,7 @@ metadata:
 **使用方式：** 将本文件放入 `~/.claude/skills/a-stock-data/SKILL.md`，Claude Code 会自动识别并在 A 股相关对话中激活。
 
 ```
-行情层（实时，不封IP）
+行情层（实时，可用性须核验）
 ├── mootdx        → K线 + 五档盘口 + 逐笔成交 (TCP 7709)
 ├── 腾讯财经 API   → PE/PB/市值/换手率/涨跌停/指数/ETF (HTTP)
 └── 百度股市通     → K线带MA5/10/20 (HTTP)
@@ -135,7 +135,7 @@ def get_prefix(code: str) -> str:
 
 ### Ticker 格式归一化
 
-所有接口统一支持多种输入格式，内部归一化为纯 6 位数字：
+`tencent_quote`支持下表输入格式并保留股票/指数交易所身份；其余代码段默认要求纯六位证券代码，调用前须显式归一化，不保证内部处理前后缀：
 
 | 输入 | 归一化结果 |
 |------|-----------|
@@ -174,11 +174,11 @@ def eastmoney_datacenter(report_name: str, columns: str = "ALL",
 
 ---
 
-## Layer 1: 行情层（实时，不封IP）
+## Layer 1: 行情层（实时；可用性须当次核验）
 
 ### 1.1 mootdx — K线 + 五档盘口 + 逐笔成交
 
-TCP 二进制协议，连通达信服务器(7709)，无需注册，不封IP。
+TCP 二进制协议，连通达信服务器(7709)，历史调用无需注册；限流、网络和访问策略可能变化，不保证持续可用。
 
 ```python
 from mootdx.quotes import Quotes
@@ -207,7 +207,7 @@ trades = client.transaction(symbol='688017', date='20260502')
 
 ### 1.2 腾讯财经 API — PE/PB/市值/换手率/涨跌停/指数/ETF
 
-HTTP GET，GBK 编码，`~` 分隔 88 个字段，不封IP。
+HTTP GET，GBK 编码，`~` 分隔字段；字段结构与访问策略须核当前响应，不保证不封IP。
 
 ```python
 import urllib.request
@@ -455,8 +455,8 @@ def ths_eps_forecast(code: str) -> pd.DataFrame:
     """
     同花顺机构一致预期EPS。
     直连 basic.10jqka.com.cn，解析HTML表格。
-    返回 DataFrame: 年度, 预测机构数, 最小值, 均值, 最大值
-    "均值" = 机构一致预期EPS
+    返回标准化 DataFrame: 年度, 预测机构数, 均值（不按列序取最小值）
+    "均值" = 机构一致预期EPS；须有明确EPS表头及必要字段，否则显式失败。
     """
     url = f"https://basic.10jqka.com.cn/new/{code}/worth.html"
     headers = {
@@ -464,15 +464,24 @@ def ths_eps_forecast(code: str) -> pd.DataFrame:
         "Referer": "https://basic.10jqka.com.cn/",
     }
     r = requests.get(url, headers=headers, timeout=15)
+    r.raise_for_status()
     r.encoding = "gbk"
-    dfs = pd.read_html(r.text)
-    # 找含"每股收益"的表格
+    from io import StringIO
+    dfs = pd.read_html(StringIO(r.text))
     for df in dfs:
-        cols = [str(c) for c in df.columns]
-        if any("每股收益" in c or "均值" in c for c in cols):
-            return df
-    # fallback: 返回第一个表
-    return dfs[0] if dfs else pd.DataFrame()
+        labels = [' '.join(map(str, c)) if isinstance(c, tuple) else str(c) for c in df.columns]
+        # 泛称“均值”可能属于营收/净利预测，不能据此冒充EPS。
+        if not any('每股收益' in c or 'EPS' in c.upper() for c in labels):
+            continue
+        aliases = {'年度': ('年度', '年份'), '预测机构数': ('预测机构数', '机构数'),
+                   '均值': ('均值', '平均值')}
+        found = {key: [i for i, label in enumerate(labels) if any(a in label for a in names)]
+                 for key, names in aliases.items()}
+        if all(len(indices) == 1 for indices in found.values()):
+            out = df.iloc[:, [found[key][0] for key in aliases]].copy()
+            out.columns = list(aliases)
+            return out
+    raise ValueError('未找到字段明确的每股收益预测表；可能无覆盖或页面结构变化，不能判作无机构覆盖')
 
 # 用法
 df = ths_eps_forecast("688017")
@@ -661,7 +670,7 @@ print(df[["代码", "名称", "涨幅%", "题材归因"]].head(10))
 
 ### 3.2 同花顺北向资金 — hsgtApi 实时分钟流向 + 本地自缓存历史
 
-> **已知行业性问题：** eastmoney 全系北向数据自 2024-08 后净买额字段返回 NaN/0，属上游断供。已改为**本地 CSV 自缓存模式**——每次拉实时数据后自动写入本地 CSV，历史越跑越丰富。
+> **已知行业性问题：** eastmoney 全系北向数据自 2024-08 后净买额字段返回 NaN/0，属上游断供。示例提供**本地 CSV 缓存辅助函数**；`hsgt_realtime()`仅读取，不自动落盘。保存前另核实际交易日期、上游字段语义和收盘状态，不能把可返回数值等同有效北向净买额。
 
 ```python
 import requests
@@ -733,7 +742,7 @@ df = hsgt_realtime()
 print(f"分钟点数: {len(df)}")
 print(df.tail(5))
 
-# 用法 2: 自动缓存今日收盘数据
+# 用法 2: 显式保存（下方为历史日期示例，须先核实际交易日/收盘及数据有效性）
 if not df.empty:
     last = df.dropna().iloc[-1]
     _save_northbound_snapshot("2026-05-17", last["hgt_yi"], last["sgt_yi"])
@@ -1707,7 +1716,7 @@ import math
 def pe_digestion(current_pe: float, cagr: float, target_pe: float = 30) -> float:
     """
     当前PE消化到目标PE需要多少年。
-    target_pe 固定30x（A股成长股合理估值锚点）。
+    target_pe 默认30x仅作计算情景，不是各行业通用合理估值。
     cagr: 用 下一年EPS / 当年EPS - 1
     """
     if current_pe <= target_pe:
@@ -1742,7 +1751,7 @@ def calc_peg(pe: float, cagr: float) -> float:
 3. PE多久消化到30x？(< 2年合理, > 4年太贵)
 4. PEG多少？(< 1 便宜, 1-1.5 合理, > 1.5 贵)
 
-30x PE 锚点: A股成长股的合理估值重力线，所有行业统一用30x。
+30x PE: 仅为示例情景参数，不是所有行业统一合理估值；须结合行业、增长质量、利率与风险。
 期权定价例外: PEG > 3 但壁垒极深时，本质是看涨期权，不适用PEG框架。
 ```
 
@@ -1758,7 +1767,7 @@ import urllib.request
 import math
 import pandas as pd
 
-def full_valuation(code: str) -> dict:
+def full_valuation(code: str, forecast_year: int | None = None) -> dict:
     """单票完整估值分析"""
     # 1. 腾讯实时行情
     prefix = "sh" if code.startswith(("6","9")) else ("bj" if code.startswith("8") else "sz")
@@ -1774,29 +1783,34 @@ def full_valuation(code: str) -> dict:
     pb = float(vals[46]) if vals[46] else 0
 
     # 2. 机构一致预期（直连同花顺）
-    df = ths_eps_forecast(code)
+    from datetime import date
+    forecast_year = date.today().year if forecast_year is None else forecast_year
     eps_cur = eps_next = None
-    analyst_count = 0
-    if not df.empty and len(df.columns) >= 3:
-        # 解析表格（列结构因页面可能变化，取前两行数据行）
-        try:
-            for i, row in df.iterrows():
-                if i == 0:
-                    eps_cur = float(row.iloc[2]) if pd.notna(row.iloc[2]) else None
-                    analyst_count = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
-                elif i == 1:
-                    eps_next = float(row.iloc[2]) if pd.notna(row.iloc[2]) else None
-        except (ValueError, IndexError):
-            pass
+    analyst_count = None
+    forecast_error = None
+    try:
+        df = ths_eps_forecast(code)
+        years = pd.to_numeric(df['年度'].astype(str).str.extract(r'(20\d{2})', expand=False), errors='coerce')
+        def read_year(year):
+            rows = df.loc[years == year]
+            if len(rows) != 1:
+                raise ValueError('指定预测年度缺失或重复，不能按前两行猜测')
+            row = rows.iloc[0]
+            eps = float(row['均值'])
+            count = float(row['预测机构数'])
+            if not math.isfinite(eps) or eps <= 0 or not math.isfinite(count) or count < 1 or not count.is_integer():
+                raise ValueError('EPS须为正且机构数有效；否则不能计算该估值情景')
+            return eps, int(count)
+        eps_cur, analyst_count = read_year(forecast_year)
+        eps_next, _ = read_year(forecast_year + 1)
+    except (ValueError, KeyError, TypeError):
+        forecast_error = 'EPS表字段、年度或数值未通过校验；不将缺数当零增长'
 
-    # 3. 估值指标
-    pe_fwd = price / eps_cur if eps_cur else float("inf")
-    cagr = (eps_next / eps_cur - 1) if (eps_cur and eps_next) else 0
-    peg = pe_fwd / (cagr * 100) if cagr > 0 else float("inf")
-    digest = (
-        math.log(pe_fwd / 30) / math.log(1 + cagr)
-        if pe_fwd > 30 and cagr > 0 else 0
-    )
+    # 3. 复用上文估值函数；高PE且非正增长为不可消化，不是0年。
+    pe_fwd = forward_pe(price, eps_cur) if eps_cur is not None else None
+    cagr = eps_next / eps_cur - 1 if eps_cur is not None and eps_next is not None else None
+    peg = calc_peg(pe_fwd, cagr) if cagr is not None else None
+    digest = pe_digestion(pe_fwd, cagr) if cagr is not None else None
 
     return {
         "name": vals[1],
@@ -1806,10 +1820,13 @@ def full_valuation(code: str) -> dict:
         "pb": pb,
         "eps_cur": eps_cur,
         "eps_next": eps_next,
-        "pe_fwd": round(pe_fwd, 1) if eps_cur else None,
-        "cagr_pct": round(cagr * 100, 0) if cagr else None,
-        "peg": round(peg, 2) if peg != float("inf") else None,
-        "digest_years": round(digest, 1),
+        "forecast_year": forecast_year,
+        "forecast_error": forecast_error,
+        "pe_fwd": round(pe_fwd, 1) if pe_fwd is not None and math.isfinite(pe_fwd) else None,
+        "cagr_pct": round(cagr * 100, 1) if cagr is not None else None,
+        "peg": round(peg, 2) if peg is not None and math.isfinite(peg) else None,
+        "digest_years": round(digest, 1) if digest is not None and math.isfinite(digest) else None,
+        "digest_status": '未计算' if digest is None else ('不可消化' if not math.isfinite(digest) else '情景计算'),
         "analyst_count": analyst_count,
     }
 
@@ -1932,14 +1949,14 @@ if holders:
 | 12 | **财联社** (HTTP) | 全市场实时电报 | 稳定 | 低 |
 | 13 | **巨潮 cninfo** (HTTP) | 公告全文检索+下载 | 稳定 | 低 |
 
-**原则：** 行情走 mootdx+腾讯（不封IP），研报走东财+iwencai，资金面走东财 datacenter+push2，**信号层走同花顺+百度+东财直连接口**。全部直连 HTTP，零第三方数据封装依赖。
+**原则：** 行情优先 mootdx+腾讯（历史访问风险较低，不保证不封IP），研报走东财+iwencai，资金面走东财 datacenter+push2，**信号层走同花顺+百度+东财直连接口**。全部直连 HTTP，零第三方数据封装依赖。
 
 ---
 
 ## FAQ
 
 ### Q: mootdx 和腾讯有什么区别？
-A: 互补关系。mootdx = 交易层（价格+盘口+K线），腾讯 = 估值层（PE/PB/市值/换手率/涨跌停价）。两者都不封IP。
+A: 互补关系。mootdx = 交易层（价格+盘口+K线），腾讯 = 估值层（PE/PB/市值/换手率/涨跌停价）。历史使用中封禁风险较低，仍可能限流或受网络/访问策略变化影响。
 
 ### Q: 为什么不用 akshare？
 A: akshare 本质是对东财/同花顺/新浪等公开 API 的封装，中间层增加了故障点（版本兼容 bug、pandas 3.0 ArrowInvalid 等）。直连底层 HTTP API，零中间依赖，更稳定可控。
@@ -1948,7 +1965,7 @@ A: akshare 本质是对东财/同花顺/新浪等公开 API 的封装，中间�
 A: 检查两点：(1) API Key 是否有效 (2) 是否携带了 X-Claw-* Headers。SkillHub 2.0 后必须带 X-Claw Headers，否则一律 401。
 
 ### Q: 同花顺一致预期 ths_eps_forecast 返回空
-A: 该股票无机构覆盖。小盘/次新/ST 股常见。可 fallback 到东财 reportapi 里的 predictThisYearEps 字段。
+A: 先区分无机构覆盖、网络失败和页面字段变化；无明确EPS表会显式失败，不能返回任意首表。可另核东财reportapi中的预测年度及EPS字段，不以单份研报冒充机构一致预期。
 
 ### Q: 东财 PDF 下载 403
 A: 必须带 `Referer: https://data.eastmoney.com/` header。
@@ -1972,7 +1989,7 @@ A: **不需要**。仅 User-Agent 即可，零鉴权 73ms 拿到 ~125 只当日�
 A: 已知坑。`ResultCode` 返回类型不稳定——有时 int，有时 string。代码里必须用 `str(d.get("ResultCode", -1)) != "0"` 统一比较。
 
 ### Q: 北向资金历史数据为什么只有最近几天？
-A: 本地自缓存模式。eastmoney 全系北向数据自 2024-08 起断供（净买额字段返回 NaN/0）。每次调用实时 API 后自动写入本地 CSV，历史越跑越丰富。
+A: 本地自缓存模式。eastmoney 全系北向数据自 2024-08 起断供（净买额字段返回 NaN/0）。实时函数不自动保存；须显式调用缓存函数，并核实际交易日期/收盘与字段有效性。没有缓存不等于无历史交易。
 
 ### Q: 行业板块为什么从同花顺换成东财？
 A: 同花顺 `stock_board_industry_summary_ths` 接口 2026 年初加了反爬 401（需要登录态）。东财 push2 行业板块数据（`m:90+t:2`）是完美替代，零鉴权且字段更丰富。

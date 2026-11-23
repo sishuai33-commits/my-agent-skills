@@ -77,7 +77,8 @@ while read -r repo; do
   name=$(basename "$repo")
   skills=$(awk -F'\t' -v r="$repo" '$1==r{printf "%s ", $2}' "$TMP/map.tsv" | sed 's/ $//')
   br=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
-  dirty=$(git -C "$repo" status --porcelain 2>/dev/null | grep -vc '^??' || true)
+  # 未提交包含未跟踪文件；否则新增技能可能被误报为工作区干净。
+  dirty=$(git -C "$repo" status --porcelain 2>/dev/null | awk 'NF {n++} END {print n+0}')
   behind="-"; ahead="-"
   remotes=$(git -C "$repo" remote 2>/dev/null); remote_rc=$?
   if [ "$remote_rc" -ne 0 ]; then

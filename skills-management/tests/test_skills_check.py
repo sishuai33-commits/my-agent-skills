@@ -27,7 +27,8 @@ if cmd == ["rev-parse", "--show-toplevel"]:
     if path.name.startswith("doc"): sys.exit(128)
     print(os.environ["FAKE_REPO"])
 elif cmd == ["rev-parse", "--abbrev-ref", "HEAD"]: print("main")
-elif cmd == ["status", "--porcelain"]: pass
+elif cmd == ["status", "--porcelain"]:
+    if os.environ.get("FAKE_DIRTY"): print(os.environ["FAKE_DIRTY"])
 elif cmd == ["remote"]:
     if not os.environ.get("FAKE_LOCAL"): print("origin")
 elif cmd[:1] == ["fetch"]:
@@ -82,6 +83,11 @@ class CheckTests(unittest.TestCase):
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         return result.stdout
+
+    def test_untracked_files_count_as_local_changes(self):
+        self.skill()
+        out = self.run_check(FAKE_DIRTY='?? newly-added.md')
+        self.assertRegex(out, r'repo\s+UNCHANGED[^\n]+\s0\s+0\s+1\s+git-skill')
 
     def test_current_git_unchanged(self):
         self.skill()

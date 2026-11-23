@@ -42,7 +42,9 @@ class CommandsTests(unittest.TestCase):
                 result = self.run_shell(command)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 args = json.loads(result.stdout)
-                self.assertEqual(args[:3], ["--session", "xhs", "eval"])
+                self.assertEqual(args[0], "--session")
+                self.assertRegex(args[1], r'^xhs-[0-9a-f]{12}$')
+                self.assertEqual(args[2], "eval")
                 self.assertEqual(len(args), 4)
                 self.assertIn("(function()", args[3])
         self.assertNotIn('eval "$(python ', TEXT)
@@ -60,6 +62,34 @@ class CommandsTests(unittest.TestCase):
         result = self.run_shell("xhs_extract absent.py")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, "")
+
+    def test_unique_session_per_task_and_owned_cleanup(self):
+        a = json.loads(self.run_shell('xhs_extract extract-search.py').stdout)[1]
+        b = json.loads(self.run_shell('xhs_extract extract-search.py').stdout)[1]
+        self.assertNotEqual(a, b)
+        self.assertNotIn('browser-act session close xhs`', TEXT)
+        self.assertIn('"$XHS_SESSION_OWNED" = 1', TEXT)
+
+    def test_search_second_slice_consumes_loaded_items_even_without_more_pages(self):
+        js = subprocess.run([sys.executable, str(ROOT / 'scripts/extract-search.py'),
+                             '--offset', '20', '--limit', '20'], check=True,
+                            capture_output=True, text=True).stdout
+        fixture = {'search': {'feeds': [{'id': str(i), 'noteCard': {}} for i in range(45)], 'hasMore': False}}
+        code = 'global.window={__INITIAL_STATE__:JSON.parse(process.argv[1])}; console.log(eval(process.argv[2]));'
+        result = subprocess.run(['node', '-e', code, json.dumps(fixture), js], check=True,
+                                capture_output=True, text=True)
+        obj = json.loads(result.stdout)
+        self.assertEqual([x['id'] for x in obj['items']], list(map(str, range(20, 40))))
+        self.assertEqual((obj['total'], obj['returned'], obj['nextOffset']), (45, 20, 40))
+        self.assertFalse(obj['hasMore'])
+        self.assertLess(obj['nextOffset'], obj['total'])
+
+    def test_search_invalid_slice_fails_before_browser(self):
+        for args in [('--offset', '-1'), ('--limit', '0')]:
+            result = subprocess.run([sys.executable, str(ROOT / 'scripts/extract-search.py'), *args],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stdout, '')
 
     def test_empty_page_is_explicit_error(self):
         js = subprocess.run([sys.executable, str(ROOT / "scripts/extract-search.py")],
